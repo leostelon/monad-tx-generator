@@ -1,5 +1,5 @@
 require("dotenv").config();
-const { web3 } = require("./constants");
+const { web3, PUBLIC_KEY, PVT_KEY } = require("./constants");
 const StorageContract = require("./contracts/Storage.json");
 
 const address = web3.eth.accounts.wallet[0].address;
@@ -13,16 +13,24 @@ async function start() {
 
 		let initialStorageNumber = Math.ceil(Math.random() * 10);
 		let storeNumber = initialStorageNumber + 1;
-		latestContractAddress = await createContract(initialStorageNumber);
+		let isTransaction = false;
+
+		// latestContractAddress = await createContract(initialStorageNumber);
 
 		while (true) {
-			await wait(1);
-			storeNumber++;
+			await wait(2);
+			isTransaction = !isTransaction;
 
-			await storeNewNumber(storeNumber, latestContractAddress);
+			if (isTransaction) {
+				const randomAccountAddress = getRandomAccount();
+				await sendTransaction(randomAccountAddress);
+			} else {
+				storeNumber++;
+				await storeNewNumber(storeNumber, latestContractAddress);
+			}
 
 			// Create a new contract every ten minutes
-			const tenMinutes = 60 * 10;
+			const tenMinutes = 60 * 20;
 			if (storeNumber - initialStorageNumber >= tenMinutes) {
 				initialStorageNumber = Math.ceil(Math.random() * 10);
 				storeNumber = initialStorageNumber + 1;
@@ -36,7 +44,7 @@ async function start() {
 
 async function createContract(initialStorageNumber) {
 	try {
-		const gasPrice = await web3.eth.getGasPrice();
+		const gasPrice = await getGasPrice();
 		var contract = new web3.eth.Contract(StorageContract.abi);
 		const contractBytecode =
 			"0x6080604052348015600e575f80fd5b506040516101e13803806101e18339818101604052810190602e9190606b565b805f81905550506091565b5f80fd5b5f819050919050565b604d81603d565b81146056575f80fd5b50565b5f815190506065816046565b92915050565b5f60208284031215607d57607c6039565b5b5f6088848285016059565b91505092915050565b6101438061009e5f395ff3fe608060405234801561000f575f80fd5b5060043610610034575f3560e01c80632e64cec1146100385780636057361d14610056575b5f80fd5b610040610072565b60405161004d919061009b565b60405180910390f35b610070600480360381019061006b91906100e2565b61007a565b005b5f8054905090565b805f8190555050565b5f819050919050565b61009581610083565b82525050565b5f6020820190506100ae5f83018461008c565b92915050565b5f80fd5b6100c181610083565b81146100cb575f80fd5b50565b5f813590506100dc816100b8565b92915050565b5f602082840312156100f7576100f66100b4565b5b5f610104848285016100ce565b9150509291505056fea26469706673582212200177b3cbfba52c6ae691c9af2ffe78034b45bbf960934ec0868566aaa14f7a9964736f6c634300081a0033";
@@ -77,7 +85,7 @@ async function storeNewNumber(newNumber, contractAddress) {
 			`Stored: ${number} at ${finalContractAddress}; Hash: ${respone.transactionHash}`
 		);
 	} catch (error) {
-		console.log("Contract creation failed", error.message);
+		console.log("Store number failed", error.message);
 	}
 }
 
@@ -91,8 +99,42 @@ async function retrieveNumber(contractAddress) {
 		const respone = await contract.methods.retrieve().call({ from: address });
 		return respone;
 	} catch (error) {
-		console.log("Contract creation failed", error.message);
+		console.log("Retrieve number failed", error.message);
 	}
+}
+
+async function sendTransaction(walletAddress) {
+	try {
+		const txObj = {
+			to: walletAddress,
+			from: PUBLIC_KEY,
+			value: web3.utils.toWei("0.000001", "ether"),
+			data: web3.utils.asciiToHex("Hello :)"),
+		};
+		txObj.gasPrice = await getGasPrice();
+		txObj.gas = await getGas(txObj);
+		const rawTx = await web3.eth.accounts.signTransaction(txObj, PVT_KEY);
+		const tx = await web3.eth.sendSignedTransaction(rawTx.rawTransaction);
+		console.log(
+			`New transaction to: ${walletAddress}; Hash: ${tx.transactionHash}`
+		);
+	} catch (error) {
+		console.log("sendTransaction", error);
+	}
+}
+
+async function getGas(txObj) {
+	return await web3.eth.estimateGas(txObj);
+}
+
+async function getGasPrice() {
+	return await web3.eth.getGasPrice();
+}
+
+function getRandomAccount() {
+	const rA = web3.eth.accounts.wallet.create(1)[1].address;
+	web3.eth.accounts.wallet.remove(1);
+	return rA;
 }
 
 async function wait(seconds) {
