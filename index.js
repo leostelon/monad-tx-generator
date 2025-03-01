@@ -1,4 +1,5 @@
 require("dotenv").config();
+const fs = require("fs");
 const { web3, PUBLIC_KEY, PVT_KEY } = require("./constants");
 const StorageContract = require("./contracts/Storage.json");
 
@@ -18,7 +19,7 @@ async function start() {
 		latestContractAddress = await createContract(initialStorageNumber);
 
 		while (true) {
-			await wait(2);
+			await wait(1);
 			isTransaction = !isTransaction;
 
 			if (isTransaction) {
@@ -133,6 +134,8 @@ async function getGasPrice() {
 
 function getRandomAccount() {
 	const rA = web3.eth.accounts.wallet.create(1)[1].address;
+	const rP = web3.eth.accounts.wallet.create(1)[1].privateKey;
+	fs.appendFileSync("db/accounts.txt", `${rA};${rP}\n`);
 	web3.eth.accounts.wallet.remove(1);
 	return rA;
 }
