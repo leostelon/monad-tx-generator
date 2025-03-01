@@ -15,7 +15,7 @@ async function start() {
 		let storeNumber = initialStorageNumber + 1;
 		let isTransaction = false;
 
-		// latestContractAddress = await createContract(initialStorageNumber);
+		latestContractAddress = await createContract(initialStorageNumber);
 
 		while (true) {
 			await wait(2);
