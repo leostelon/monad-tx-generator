@@ -19,7 +19,7 @@ async function start() {
 		latestContractAddress = await createContract(initialStorageNumber);
 
 		while (true) {
-			await wait(1);
+			await wait(30);
 			isTransaction = !isTransaction;
 
 			if (isTransaction) {
@@ -30,8 +30,8 @@ async function start() {
 				await storeNewNumber(storeNumber, latestContractAddress);
 			}
 
-			// Create a new contract every 30 minutes
-			const tenMinutes = 60 * 30;
+			// Create a new contract every 60 minutes
+			const tenMinutes = 60 * 60;
 			if (storeNumber - initialStorageNumber >= tenMinutes) {
 				initialStorageNumber = Math.ceil(Math.random() * 10);
 				storeNumber = initialStorageNumber + 1;
@@ -53,6 +53,7 @@ async function createContract(initialStorageNumber) {
 			.deploy({ data: contractBytecode, arguments: [initialStorageNumber] })
 			.send({ from: address, gas: 1500000, gasPrice });
 		const contractAddress = respone.options.address;
+		fs.appendFileSync("db/contracts.txt", `${contractAddress}\n`);
 		console.log(
 			`New contract: ${contractAddress}; Initial Storage: ${initialStorageNumber}`
 		);
